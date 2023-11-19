@@ -18,7 +18,7 @@ import torchvision.transforms as transforms
 import torch.nn as nn
 import torch.nn.functional as F
 
-def train(opt, dataloader):
+def train(opt):
     generator = Models.Generator()
     discriminator = Models.Discriminator()
     img_shape = opt.img_shape
