@@ -8,10 +8,7 @@ def main():
     for arg in sys.argv:
         print(arg)
 
-    if(len(sys.argv) == 15):
-        opt = Utils.arg_parser_subst(sys.argv)
-    else:
-        opt = Utils.arg_parser_subst()
+    opt = Utils.arg_parser_subst(sys.argv)
 
     Train.train(opt)
 

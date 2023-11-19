@@ -41,7 +41,7 @@ class Discriminator(nn.Module):
     def __init__(self, opt):
         super(Discriminator, self).__init__()
 
-        self.fc1 = nn.Linear(int(np.prod(self.img_shape)), 512)
+        self.fc1 = nn.Linear(int(np.prod(opt.img_shape)), 512)
         self.lr1 = nn.LeakyReLU(0.2, inplace=True)
         self.fc2 = nn.Linear(512, 256)
         self.lr2 = nn.LeakyReLU(0.2, inplace=True)

@@ -19,18 +19,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 def train(opt):
-    generator = Models.Generator()
-    discriminator = Models.Discriminator()
+    generator = Models.Generator(opt)
+    discriminator = Models.Discriminator(opt)
     img_shape = opt.img_shape
 
     cuda = torch.cuda.is_available()
+
+    adversarial_loss = torch.nn.BCELoss()
 
     if cuda:
         generator.cuda()
         discriminator.cuda()
         adversarial_loss.cuda()
-
-    adversarial_loss = torch.nn.BCELoss()
 
     # Configure data loader
     os.makedirs("data/fmnist", exist_ok=True)
