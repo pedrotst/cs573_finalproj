@@ -1,12 +1,12 @@
 import sys
 from tqdm import tqdm_notebook
 
-import Utils
-import Train
+import utils
+import train
 
 def main():
-    opt = Utils.arg_parser_subst(sys.argv)
-    Train.train(opt)
+    opt = utils.arg_parser_subst(sys.argv)
+    train.train(opt)
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
 
-from Utils import *
+from utils import *
 
 class Generator(nn.Module):
     def __init__(self, opt):

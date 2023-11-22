@@ -1,8 +1,8 @@
 import os
 import time
 import torch
-import Models
-import Utils
+import models
+import utils
 
 from sklearn.metrics import confusion_matrix
 from torch.autograd import Variable
@@ -19,8 +19,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 def train(opt):
-    generator = Models.Generator(opt)
-    discriminator = Models.Discriminator(opt)
+    generator = models.Generator(opt)
+    discriminator = models.Discriminator(opt)
     img_shape = opt.img_shape
 
     cuda = torch.cuda.is_available()
@@ -179,7 +179,7 @@ def train(opt):
                 % (epoch, opt.n_epochs, i, num_batches, d_loss_epoch.item()/num_batches, g_loss_epoch.item()/num_batches, 
                     c_loss_1_epoch.item()/num_batches, c_loss_2_epoch.item()/num_batches, classification_accuracy, interval))
 
-            Utils.show(make_grid(plot_imgs[:opt.n_paths_G*10].cpu(), nrow=10, normalize=True), opt)
+            utils.show(make_grid(plot_imgs[:opt.n_paths_G*10].cpu(), nrow=10, normalize=True), opt)
             plt.show()
             
             # Compute and print confusion matrix at the end of each epoch
