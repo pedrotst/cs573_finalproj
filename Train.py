@@ -179,7 +179,7 @@ def train(opt):
                 % (epoch, opt.n_epochs, i, num_batches, d_loss_epoch.item()/num_batches, g_loss_epoch.item()/num_batches, 
                     c_loss_1_epoch.item()/num_batches, c_loss_2_epoch.item()/num_batches, classification_accuracy, interval))
 
-            Utils.show(make_grid(plot_imgs[:opt.n_paths_G*10].cpu(), nrow=10, normalize=True))
+            Utils.show(make_grid(plot_imgs[:opt.n_paths_G*10].cpu(), nrow=10, normalize=True), opt)
             plt.show()
             
             # Compute and print confusion matrix at the end of each epoch
