@@ -21,6 +21,7 @@ class arg_parser_subst():
             self.classifier_para = int(argv[13])
             self.classifier_para_g = int(argv[14])
             self.img_shape = (self.channels, self.img_size, self.img_size)
+            
         else:
             self.n_epochs = 500 
             self.batch_size = 100

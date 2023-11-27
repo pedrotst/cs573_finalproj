@@ -32,8 +32,46 @@ class Gan:
             self.discriminator.cuda()
             self.adversarial_loss.cuda()
     
-    def train_on_batch(self):
-        return
+    def logging(self, epoch, dataloader, d_loss_epoch, g_loss_epoch, c_loss_1_epoch, c_loss_2_epoch, classification_accuracy, interval, plot_imgs, all_targets, all_predictions):
+        
+        num_batches = len(dataloader)
+        print ("[Epoch %d/%d] [D loss: %f] [G loss: %f] [C loss 1: %f] [C loss 2: %f] [Acc: %.2f%%] \t Time Interv: %f"
+                    % (epoch, self.opt.n_epochs, d_loss_epoch/num_batches, g_loss_epoch/num_batches, 
+                        c_loss_1_epoch/num_batches, c_loss_2_epoch/num_batches, classification_accuracy, interval))
+        
+        true_labels, cluster_preds = utils.get_cluster(dataloader, self.discriminator)
+        true_labels = true_labels.cpu().numpy().astype(np.int32)
+        cluster_preds = cluster_preds.cpu().numpy().astype(np.int32)
+        nmi_result = nmi(true_labels, cluster_preds)
+        acc_result = utils.clustering_acc(true_labels, cluster_preds)
+
+        print('Clustering metrics:', flush=True)
+        print(f'NMI:{nmi_result}', flush=True)
+        print(f'ACC:{acc_result}', flush=True)
+
+        # create a directory called plot to store all the confusion matrices and generated images
+        if not (os.path.exists(os.path.join(os.getcwd(),'plot'))):
+            os.makedirs(os.path.join(os.getcwd(),'plot'))
+
+        utils.show(make_grid(plot_imgs[:self.opt.n_paths_G*10].cpu(), nrow=10, normalize=True), self.opt)
+
+        if not (os.path.exists(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}'))):
+            os.makedirs(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}'))
+
+        plt.savefig(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'generated_imgs.png'))
+
+        # Compute and print confusion matrix at the end of each epoch
+        cm = confusion_matrix(all_targets, all_predictions)/(self.opt.batch_size_g*len(dataloader))
+        cm_rounded = np.around(cm, decimals=2)
+        fig, ax = plt.subplots(figsize=(self.opt.n_paths_G//2, self.opt.n_paths_G//2))
+        # sns.heatmap(cm, annot=True, fmt='d', ax=ax, cmap='Blues')
+        sns.heatmap(cm_rounded, annot=True, fmt=".2f", linewidths=.5, square = True, cmap = 'viridis')
+        ax.set_xlabel('Predicted Labels')
+        ax.set_ylabel('True Labels')
+        ax.set_title('Confusion Matrix')
+        plt.savefig(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'confusion_matrix.png'))
+        
+        
 
     def train(self, dataloader):
         Tensor = torch.cuda.FloatTensor if self.cuda else torch.FloatTensor
@@ -157,51 +195,16 @@ class Gan:
             #printing training information
             interval = time.time() - start
             
+            classification_accuracy = 100.0 * correct_predictions / total_predictions
+            
             if (epoch < 20 and epoch % 5 == 0) or (epoch > 20 and epoch % 20 == 0):
-                
-                # print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [C loss 1: %f] [C loss 2: %f] \t Time Interv: %f"
-                #        % (epoch, opt.n_epochs, i, num_batches, d_loss_epoch.item()/num_batches, g_loss_epoch.item()/num_batches, 
-                #           c_loss_1_epoch.item()/num_batches, c_loss_2_epoch.item()/num_batches, interval))
 
-                classification_accuracy = 100.0 * correct_predictions / total_predictions
+                self.logging(epoch, dataloader, d_loss_epoch.item(), g_loss_epoch.item(), c_loss_1_epoch.item(), c_loss_2_epoch.item(), classification_accuracy, interval, plot_imgs, all_targets, all_predictions)
 
-                print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [C loss 1: %f] [C loss 2: %f] [Acc: %.2f%%] \t Time Interv: %f"
-                    % (epoch, self.opt.n_epochs, i, num_batches, d_loss_epoch.item()/num_batches, g_loss_epoch.item()/num_batches, 
-                        c_loss_1_epoch.item()/num_batches, c_loss_2_epoch.item()/num_batches, classification_accuracy, interval))
                 
                 
-                true_labels, cluster_preds = utils.get_cluster(dataloader, self.discriminator)
-                true_labels = true_labels.cpu().numpy().astype(np.int32)
-                cluster_preds = cluster_preds.cpu().numpy().astype(np.int32)
-                nmi_result = nmi(true_labels, cluster_preds)
-                acc_result = utils.clustering_acc(true_labels, cluster_preds)
-
-                print('Clustering metrics:', flush=True)
-                print(f'NMI:{nmi_result}', flush=True)
-                print(f'ACC:{acc_result}', flush=True)
                 
-                # create a directory called plot to store all the confusion matrices and generated images
-                if not (os.path.exists(os.path.join(os.getcwd(),'plot'))):
-                    os.makedirs(os.path.join(os.getcwd(),'plot'))
-
-                utils.show(make_grid(plot_imgs[:self.opt.n_paths_G*10].cpu(), nrow=10, normalize=True), self.opt)
-                plt.show()
-                
-                if not (os.path.exists(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}'))):
-                    os.makedirs(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}'))
-
-                plt.savefig(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'generated_imgs.png'))
-                
-                # Compute and print confusion matrix at the end of each epoch
-                cm = confusion_matrix(all_targets, all_predictions)/(self.opt.batch_size_g*len(dataloader))
-                cm_rounded = np.around(cm, decimals=2)
-                fig, ax = plt.subplots(figsize=(self.opt.n_paths_G//2, self.opt.n_paths_G//2))
-                # sns.heatmap(cm, annot=True, fmt='d', ax=ax, cmap='Blues')
-                sns.heatmap(cm_rounded, annot=True, fmt=".2f", linewidths=.5, square = True, cmap = 'viridis')
-                ax.set_xlabel('Predicted Labels')
-                ax.set_ylabel('True Labels')
-                ax.set_title('Confusion Matrix')
-                plt.savefig(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'confusion_matrix.png'))
+               
 
                 
                 
