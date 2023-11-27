@@ -2,7 +2,7 @@ import os
 import sys
 
 import utils
-import models
+# import models
 import torch
 
 
@@ -16,8 +16,14 @@ import torch.nn as nn
 def main():
     opt = utils.arg_parser_subst(sys.argv)
 
+    if("cnn" in opt.architecture):
+        import models_cnn as models
+    else:
+        import models
+
     generator = models.Generator(opt) #ok 
     discriminator = models.Discriminator(opt) # ok
+
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
     gan = Gan(generator, discriminator, optimizer_G, optimizer_D, opt)

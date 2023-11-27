@@ -160,6 +160,11 @@ class Gan:
 
                     # generates a batch of images with generator k
                     gen_imgs = self.generator.paths[k](z).view(imgs.shape[0], *(self.opt.img_shape))
+
+                    noise = torch.zeros_like(gen_imgs).cuda()
+                    if("cnn" in self.discriminator.architecture):
+                        noise = noise + (0.1**0.5)*torch.randn(noise.shape).cuda()
+
                     temp.append(gen_imgs[0:10, :])
 
                     #again we measure the outputs of the discriminator and the classifier 

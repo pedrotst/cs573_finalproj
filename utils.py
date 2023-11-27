@@ -5,7 +5,7 @@ class arg_parser_subst():
     
     def __init__(self, argv):
 
-        if(len(argv) == 15):
+        if(len(argv) == 16):
             self.n_epochs = int(argv[1])
             self.batch_size = int(argv[2])
             self.batch_size_g = int(argv[3])
@@ -21,6 +21,7 @@ class arg_parser_subst():
             self.classifier_para = int(argv[13])
             self.classifier_para_g = int(argv[14])
             self.img_shape = (self.channels, self.img_size, self.img_size)
+            self.architecture = argv[15]
             
         else:
             self.n_epochs = 500 
@@ -38,6 +39,7 @@ class arg_parser_subst():
             self.classifier_para = 0.001
             self.classifier_para_g = 0.001
             self.img_shape = (self.channels, self.img_size, self.img_size)
+            self.architecture = 'cnn'
 
 def show(img, opt):
     npimg = img.detach().numpy()
