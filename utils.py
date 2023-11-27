@@ -32,14 +32,14 @@ class arg_parser_subst():
             self.b2 = 0.999 
             self.n_cpu = 12 
             self.latent_dim = 100 
-            self.img_size = 28
-            self.channels = 1
+            self.img_size = 32
+            self.channels = 3
             self.sample_interval = 400 
             self.n_paths_G = 50 # number of generators
             self.classifier_para = 0.001
             self.classifier_para_g = 0.001
             self.img_shape = (self.channels, self.img_size, self.img_size)
-            self.architecture = 'cnn'
+            self.architecture = 'cnn_short'
 
 def show(img, opt):
     npimg = img.detach().numpy()

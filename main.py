@@ -18,8 +18,31 @@ def main():
 
     if("cnn" in opt.architecture):
         import models_cnn as models
+        os.makedirs("data/CIFAR10", exist_ok=True)
+        dataloader = torch.utils.data.DataLoader(
+            datasets.CIFAR10('data/CIFAR10', train=True, download=True,
+                   transform=transforms.Compose([
+                       transforms.ToTensor(),
+                       transforms.Normalize([.5],[.5])
+                   ])),
+            batch_size=opt.batch_size, shuffle=True)
     else:
         import models
+        # Configure data loader
+        os.makedirs("data/fmnist", exist_ok=True)
+        dataloader = torch.utils.data.DataLoader(
+            datasets.FashionMNIST(
+                "data/fmnist",
+                train=True,
+                download=True,
+                transform=transforms.Compose(
+                    [transforms.ToTensor(), transforms.Normalize([0.5], [0.5])]
+                ),
+            ),
+            batch_size=opt.batch_size,
+            shuffle=True,
+        )
+
 
     generator = models.Generator(opt) #ok 
     discriminator = models.Discriminator(opt) # ok
@@ -28,21 +51,7 @@ def main():
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
     gan = Gan(generator, discriminator, optimizer_G, optimizer_D, opt)
 
-    # Configure data loader
-    os.makedirs("data/fmnist", exist_ok=True)
-    dataloader = torch.utils.data.DataLoader(
-        datasets.FashionMNIST(
-            "data/fmnist",
-            train=True,
-            download=True,
-            transform=transforms.Compose(
-                [transforms.ToTensor(), transforms.Normalize([0.5], [0.5])]
-            ),
-        ),
-        batch_size=opt.batch_size,
-        shuffle=True,
-    )
-
+    
     gan.train(dataloader)
 
 
