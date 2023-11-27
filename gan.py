@@ -26,8 +26,8 @@ class Gan:
         self.adversarial_loss = torch.nn.BCELoss()
 
         if self.cuda:
-            self.gen_set.cuda()
-            self.disc.cuda()
+            self.generator.cuda()
+            self.discriminator.cuda()
             self.adversarial_loss.cuda()
     
     def train_on_batch(self):
@@ -81,7 +81,7 @@ class Gan:
                     target = Variable(Tensor(imgs.size(0)).fill_(k), requires_grad=False)
                     target = target.type(torch.cuda.LongTensor)
                     
-                    c_loss_1 += F.nll_loss(classifier, target) * opt.classifier_para_g
+                    c_loss_1 += F.nll_loss(classifier, target) * self.opt.classifier_para_g
 
                     _, predicted = torch.max(classifier.data, 1)
                     total_predictions += target.size(0)
@@ -167,7 +167,7 @@ class Gan:
                     % (epoch, self.opt.n_epochs, i, num_batches, d_loss_epoch.item()/num_batches, g_loss_epoch.item()/num_batches, 
                         c_loss_1_epoch.item()/num_batches, c_loss_2_epoch.item()/num_batches, classification_accuracy, interval))
 
-                utils.show(make_grid(plot_imgs[:self.opt.n_paths_G*10].cpu(), nrow=10, normalize=True), opt)
+                utils.show(make_grid(plot_imgs[:self.opt.n_paths_G*10].cpu(), nrow=10, normalize=True), self.opt)
                 plt.show()
                 
                 # Compute and print confusion matrix at the end of each epoch
