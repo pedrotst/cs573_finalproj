@@ -1,7 +1,9 @@
+import os
 import time
 import torch
 import models
 import utils
+from sklearn.metrics import normalized_mutual_info_score as nmi
 
 from sklearn.metrics import confusion_matrix
 from torch.autograd import Variable
@@ -166,9 +168,29 @@ class Gan:
                 print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [C loss 1: %f] [C loss 2: %f] [Acc: %.2f%%] \t Time Interv: %f"
                     % (epoch, self.opt.n_epochs, i, num_batches, d_loss_epoch.item()/num_batches, g_loss_epoch.item()/num_batches, 
                         c_loss_1_epoch.item()/num_batches, c_loss_2_epoch.item()/num_batches, classification_accuracy, interval))
+                
+                
+                true_labels, cluster_preds = utils.get_cluster(dataloader, self.discriminator)
+                true_labels = true_labels.cpu().numpy().astype(np.int32)
+                cluster_preds = cluster_preds.cpu().numpy().astype(np.int32)
+                nmi_result = nmi(true_labels, cluster_preds)
+                acc_result = utils.clustering_acc(true_labels, cluster_preds)
+
+                print('Clustering metrics:', flush=True)
+                print(f'NMI:{nmi_result}', flush=True)
+                print(f'ACC:{acc_result}', flush=True)
+                
+                # create a directory called plot to store all the confusion matrices and generated images
+                if not (os.path.exists(os.path.join(os.getcwd(),'plot'))):
+                    os.makedirs(os.path.join(os.getcwd(),'plot'))
 
                 utils.show(make_grid(plot_imgs[:self.opt.n_paths_G*10].cpu(), nrow=10, normalize=True), self.opt)
                 plt.show()
+                
+                if not (os.path.exists(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}'))):
+                    os.makedirs(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}'))
+
+                plt.savefig(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'generated_imgs.png'))
                 
                 # Compute and print confusion matrix at the end of each epoch
                 cm = confusion_matrix(all_targets, all_predictions)/(self.opt.batch_size_g*len(dataloader))
@@ -179,4 +201,9 @@ class Gan:
                 ax.set_xlabel('Predicted Labels')
                 ax.set_ylabel('True Labels')
                 ax.set_title('Confusion Matrix')
-                plt.show()
+                plt.savefig(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'confusion_matrix.png'))
+
+                
+                
+                
+                
