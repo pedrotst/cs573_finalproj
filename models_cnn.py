@@ -5,7 +5,7 @@ import numpy as np
 import torch.nn.functional as F
 
 from utils import *
-
+import pdb
 
 def get_seq_model_shapes(seq_model, input_shape, seq_model_name = 'seq_model'):
     input_tensor = torch.zeros(*input_shape)
@@ -162,9 +162,8 @@ class Discriminator(nn.Module):
         x = self.bn2(x)
         x = F.leaky_relu(self.conv3(x), 0.2)
         x = self.bn3(x)
-        x = x.view(100, -1)
+        x = x.view(x.size(0), -1)
         x = self.fc1(x)
-        
         
         validity = self.paths[0](x)
         classifier = F.log_softmax(self.paths[1](x), dim=1)

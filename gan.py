@@ -15,6 +15,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
 
+import pdb
+
 class Gan:
     def __init__(self, generator, discriminator, optimizer_G, optimizer_D, opt):
         # make dictionary story the losses
@@ -63,6 +65,7 @@ class Gan:
         # Compute and print confusion matrix at the end of each epoch
         cm = confusion_matrix(all_targets, all_predictions)/(self.opt.batch_size_g*len(dataloader))
         cm_rounded = np.around(cm, decimals=2)
+        np.save(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'confusion_matrix.npy'), cm_rounded)
         fig, ax = plt.subplots(figsize=(self.opt.n_paths_G//2, self.opt.n_paths_G//2))
         # sns.heatmap(cm, annot=True, fmt='d', ax=ax, cmap='Blues')
         sns.heatmap(cm_rounded, annot=True, fmt=".2f", linewidths=.5, square = True, cmap = 'viridis')
@@ -94,6 +97,7 @@ class Gan:
             num_batches = len(dataloader)
             
             for i, (imgs, _) in enumerate(dataloader):
+                print(i)
                 
                 valid = Variable(Tensor(imgs.size(0), 1).fill_(1.0), requires_grad=False)
                 fake = Variable(Tensor(imgs.size(0), 1).fill_(0.0), requires_grad=False)
@@ -106,16 +110,23 @@ class Gan:
 
                 self.optimizer_G.zero_grad()
 
-                z = Variable(Tensor(np.random.normal(0, 1, (self.opt.batch_size_g, self.opt.latent_dim))))
+                z = Variable(Tensor(np.random.normal(0, 1, (imgs.size(0), self.opt.latent_dim))))
                 g_loss = 0 
                 c_loss_1 = 0 
                 
                 for k in range(self.opt.n_paths_G):
 
                     gen_imgs = self.generator.paths[k](z)
-                    # gan.train_on_batch(real_imgs, gen_imgs)
+                    if("cnn" in self.generator.architecture):
+                        noise = torch.zeros_like(gen_imgs).cuda()
+                        noise = noise + (0.1**0.5)*torch.randn(noise.shape).cuda()
+                        gen_imgs = gen_imgs + noise
+                    
+                    
 
                     validity, classifier = self.discriminator(gen_imgs)
+                    
+                    
                     g_loss += self.adversarial_loss(validity, valid)
 
                     target = Variable(Tensor(imgs.size(0)).fill_(k), requires_grad=False)
@@ -132,6 +143,7 @@ class Gan:
                     all_predictions.extend(predicted.cpu().numpy())
 
                     # train_on_batch
+               
                 
                 g_loss_epoch += g_loss
                 c_loss_1_epoch += c_loss_1       
@@ -151,6 +163,8 @@ class Gan:
                 
                 #loss of the discriminator with real images
                 validity, classifier = self.discriminator(real_imgs)
+                
+                
                 real_loss = self.adversarial_loss(validity, valid)
                 
                 temp = [] #variable to store images for plot
@@ -205,7 +219,6 @@ class Gan:
             classification_accuracy = 100.0 * correct_predictions / total_predictions
             
             if (epoch < 20 and epoch % 5 == 0) or (epoch > 20 and epoch % 20 == 0):
-
                 self.logging(epoch, dataloader, d_loss_epoch.item(), g_loss_epoch.item(), c_loss_1_epoch.item(), c_loss_2_epoch.item(), classification_accuracy, interval, plot_imgs, all_targets, all_predictions)
 
                 

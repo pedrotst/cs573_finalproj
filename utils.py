@@ -5,8 +5,8 @@ class arg_parser_subst():
     
     def __init__(self, argv):
         self.n_epochs = 500 
-        self.batch_size = 100
-        self.batch_size_g = 100
+        self.batch_size = 64
+        self.batch_size_g = 64
         self.lr = 0.0002 
         self.b1 = 0.5 
         self.b2 = 0.999 
@@ -31,6 +31,7 @@ class arg_parser_subst():
             self.architecture = argv[2]
 
         self.img_shape = (self.channels, self.img_size, self.img_size)
+        print(self.img_shape, flush=True)
 
 
 def show(img, opt):

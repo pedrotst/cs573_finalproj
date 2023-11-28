@@ -9,6 +9,7 @@ class Generator(nn.Module):
     def __init__(self, opt):
         super(Generator, self).__init__()
         self.opt = opt
+        self.architecture = self.opt.architecture
 
         
         def block(in_feat, out_feat, normalize=True):
