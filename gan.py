@@ -15,6 +15,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
 
+from scipy.cluster import hierarchy
+
 import pdb
 
 class Gan:
@@ -74,7 +76,13 @@ class Gan:
         ax.set_title('Confusion Matrix')
         plt.savefig(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'confusion_matrix.png'))
         
-        
+        similiarity_distance = hierarchy.distance.pdist(cm, metric='euclidean')
+        agglomerative_clusters = hierarchy.linkage(similiarity_distance, method='single')
+        np.save(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'agglomerative_clusters.npy'), agglomerative_clusters)
+        fig = plt.figure(figsize=(25, 10))
+        dn = hierarchy.dendrogram(agglomerative_clusters)
+        plt.savefig(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'agglomerative_clusters_dendrogram.png'))
+
 
     def train(self, dataloader):
         Tensor = torch.cuda.FloatTensor if self.cuda else torch.FloatTensor
@@ -97,7 +105,6 @@ class Gan:
             num_batches = len(dataloader)
             
             for i, (imgs, _) in enumerate(dataloader):
-                print(i)
                 
                 valid = Variable(Tensor(imgs.size(0), 1).fill_(1.0), requires_grad=False)
                 fake = Variable(Tensor(imgs.size(0), 1).fill_(0.0), requires_grad=False)

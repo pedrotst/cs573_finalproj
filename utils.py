@@ -5,8 +5,8 @@ class arg_parser_subst():
     
     def __init__(self, argv):
         self.n_epochs = 500 
-        self.batch_size = 64
-        self.batch_size_g = 64
+        self.batch_size = 100
+        self.batch_size_g = 100
         self.lr = 0.0002 
         self.b1 = 0.5 
         self.b2 = 0.999 
@@ -73,14 +73,15 @@ def clustering_acc(y_true, y_pred):
 
 
 def get_cluster(dataloader, discriminator, soft_preds=False):
-    cuda = True if torch.cuda.is_available() else False
-    Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+    #cuda = True if torch.cuda.is_available() else False
+    #Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     all_data = []
     all_idxs = []
     all_preds = []
     for i, (x,y) in enumerate(dataloader):
-        x = x.type(Tensor)
-        y = y.type(Tensor)
+        x = x.to(device)
+        y = y.to(device)
         d_out, c_out = discriminator(x)
         all_preds.append(c_out)
         all_idxs.append(y)
