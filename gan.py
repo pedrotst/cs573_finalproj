@@ -4,6 +4,8 @@ import torch
 import models
 import utils
 from sklearn.metrics import normalized_mutual_info_score as nmi
+from sklearn.cluster import AgglomerativeClustering
+
 
 from sklearn.metrics import confusion_matrix
 from torch.autograd import Variable
@@ -75,13 +77,29 @@ class Gan:
         ax.set_ylabel('True Labels')
         ax.set_title('Confusion Matrix')
         plt.savefig(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'confusion_matrix.png'))
+
+
+        # Agglomerative clustering from 50 to 10 clusters
+        min_num_clusters = 9
+        nmi_list =[]
+        acc_list =[]
+        for num_clusters in range(50,min_num_clusters,-1):
+            model = AgglomerativeClustering(linkage='single', n_clusters=num_clusters, metric='euclidean', compute_distances=True)
+            labels = model.fit_predict(cm_rounded)
+            new_labels = np.zeros(cluster_preds.shape)
+            # Update new_labels based on cluster assignments
+            for cluster_idx, cluster_label in enumerate(np.unique(cluster_preds)):
+                cluster_mask = cluster_preds == cluster_label
+                new_labels[cluster_mask] = labels[cluster_idx]
+            
+            nmi_list.append((nmi(true_labels, new_labels)))
+            acc_list.append(utils.clustering_acc(true_labels, new_labels.astype(np.int64)))
+    
+        np.save(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'nmi_scores.npy'), np.array(nmi_list))
+        np.save(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'acc_scores.npy'), np.array(acc_list))
+
         
-        similiarity_distance = hierarchy.distance.pdist(cm, metric='euclidean')
-        agglomerative_clusters = hierarchy.linkage(similiarity_distance, method='single')
-        np.save(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'agglomerative_clusters.npy'), agglomerative_clusters)
-        fig = plt.figure(figsize=(25, 10))
-        dn = hierarchy.dendrogram(agglomerative_clusters)
-        plt.savefig(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'agglomerative_clusters_dendrogram.png'))
+        
 
 
     def train(self, dataloader):
