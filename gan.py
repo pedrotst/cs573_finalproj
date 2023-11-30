@@ -22,12 +22,13 @@ from scipy.cluster import hierarchy
 import pdb
 
 class Gan:
-    def __init__(self, generator, discriminator, optimizer_G, optimizer_D, opt):
+    def __init__(self, generator, discriminator, optimizer_G, optimizer_D, optimizer_C, opt):
         # make dictionary story the losses
         self.generator = generator
         self.discriminator = discriminator
         self.optimizer_G = optimizer_G
         self.optimizer_D = optimizer_D
+        self.optimizer_C = optimizer_C
         self.cuda = torch.cuda.is_available()
         self.opt = opt
 
@@ -181,6 +182,7 @@ class Gan:
                 # ------------------------------------------------------------------------
 
                 self.optimizer_D.zero_grad()
+                self.optimizer_C.zero_grad()
 
                 d_loss = 0 #adversarial loss for discrimination to be applied to the discriminator
                 c_loss_2 = 0 #classification loss to be applied to the classifier
@@ -234,7 +236,9 @@ class Gan:
                 d_loss = d_loss + c_loss_2
                 #jointly apply the gradients to the layers of the discriminator and classifier
                 d_loss.backward()
+                
                 self.optimizer_D.step()
+                self.optimizer_C.step()
             
             #printing training information
             interval = time.time() - start

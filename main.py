@@ -77,9 +77,16 @@ def main():
     generator = models.Generator(opt) #ok 
     discriminator = models.Discriminator(opt) # ok
 
-    optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
-    optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
-    gan = Gan(generator, discriminator, optimizer_G, optimizer_D, opt)
+    #optimizer G
+    optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr_g, betas=(opt.b1, opt.b2))
+    
+    #optimizer D
+    optimizer_D = torch.optim.Adam(list(discriminator.encoder_layers.parameters()) + list(discriminator.paths[0].parameters()), lr=opt.lr_d, betas=(opt.b1, opt.b2))
+    # optimizer_D.add_param_group(discriminator.paths[0].parameters())
+    
+    #optimizer C
+    optimizer_C = torch.optim.Adam(discriminator.paths[1].parameters(), lr=opt.lr_c, betas=(opt.b1, opt.b2))
+    gan = Gan(generator, discriminator, optimizer_G, optimizer_D, optimizer_C, opt)
 
     gan.train(dataloader)
 

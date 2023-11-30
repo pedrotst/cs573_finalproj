@@ -34,27 +34,27 @@ import argparse
 #         self.img_shape = (self.channels, self.img_size, self.img_size)
 #         print(self.img_shape, flush=True)
 
-
-
 def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--n_epochs', type=int, default=500, help='number of epochs')
     parser.add_argument('--batch_size', type=int, default=100, help='batch size')
     parser.add_argument('--batch_size_g', type=int, default=100, help='generator batch size')
-    parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
+    parser.add_argument('--lr_d', type=float, default=0.0002, help='learning rate for disc')
+    parser.add_argument('--lr_g', type=float, default=0.0002, help='learning rate for gen')
+    parser.add_argument('--lr_c', type=float, default=0.00002, help='learning rate for clasf')
     parser.add_argument('--b1', type=float, default=0.5, help='adam: decay of first order momentum')
     parser.add_argument('--b2', type=float, default=0.999, help='adam: decay of second order momentum')
     parser.add_argument('--n_cpu', type=int, default=12, help='number of cpu threads to use during batch generation')
     parser.add_argument('--latent_dim', type=int, default=100, help='dimensionality of the latent space')
     parser.add_argument('--sample_interval', type=int, default=400, help='interval between image samples')
     parser.add_argument('--n_paths_G', type=int, default=50, help='number of generators')
-    parser.add_argument('--classifier_para', type=float, default=0.001, help='classifier parameter')
-    parser.add_argument('--classifier_para_g', type=float, default=0.001, help='generator classifier parameter')
+    parser.add_argument('--classifier_para', type=float, default=1.0, help='classifier parameter')
+    parser.add_argument('--classifier_para_g', type=float, default=1.0, help='generator classifier parameter')
     parser.add_argument('--dataset', choices=['fmnist', 'mnist', 'cifar10'], help='dataset name')
     parser.add_argument('--architecture', default='mlp', help='architecture for the model')
     parser.add_argument('--logs_path', default='logs', help='where to save logs')
-
+    
     args = parser.parse_args()
 
     if args.dataset == 'cifar10':
