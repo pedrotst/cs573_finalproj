@@ -59,7 +59,6 @@ def linear_block(nf_in, nf_out, norm='no_norm',  act=None):
     return block
 
 
-
 class Generator(nn.Module):
     def __init__(self, 
                 opt,
@@ -89,8 +88,6 @@ class Generator(nn.Module):
             layers.append(nn.LeakyReLU(0.2, inplace=True))
             return layers
         
-        
-        
         modules = nn.ModuleList()
         
         shared_layers = []
@@ -105,7 +102,7 @@ class Generator(nn.Module):
             gen_layers += shared_layers
 
             if architecture == 'cnn' or architecture == 'cnn_short':
-                gen_layers += convT_block(nf, nc, stride=2, padding=1, norm='no_norm', act=nn.Tanh())  
+                gen_layers += convT_block(nf, opt.channels, stride=2, padding=1, norm='no_norm', act=nn.Tanh())  
 
             elif (architecture == 'cnn_long'):
                 first_map_shape = 3
@@ -113,7 +110,7 @@ class Generator(nn.Module):
                 gen_layers += Reshape(-1, nf*4, first_map_shape, first_map_shape),
                 gen_layers += convT_block(nf*4, nf*2, stride=2, padding=1, norm=self.norm, act=nn.ReLU(True)) 
                 gen_layers += convT_block(nf*2, nf, stride=2, padding=0, norm=self.norm, act=nn.ReLU(True))  
-                gen_layers += convT_block(nf, nc, stride=2, padding=1, norm='no_norm',  act=nn.Tanh())  
+                gen_layers += convT_block(nf, opt.channels, stride=2, padding=1, norm='no_norm',  act=nn.Tanh())  
 
             else:
                 raise ValueError('Architecture {} not implemented!'.format(architecture))
@@ -131,43 +128,116 @@ class Generator(nn.Module):
        
         return img
 
+
+# class Discriminator(nn.Module):
+#     def __init__(self, opt):
+#         super(Discriminator, self).__init__()
+
+#         self.conv1 = nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1)
+#         self.bn1 = nn.BatchNorm2d(64)
+#         self.conv2 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)
+#         self.bn2 = nn.BatchNorm2d(128)
+#         self.conv3 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)
+#         self.bn3 = nn.BatchNorm2d(256)
+#         self.fc1 = nn.Linear(4096, 100)
+        
+#         modules = nn.ModuleList()
+        
+#         modules.append(nn.Sequential(
+#             nn.Linear(100, 1),
+#             nn.Sigmoid(),
+#                 ))
+#         modules.append(nn.Sequential(
+#             nn.Linear(100, opt.n_paths_G),
+#                 ))
+#         self.paths = modules
+    
+#     def forward(self, x):
+        
+#         x = F.leaky_relu(self.conv1(x), 0.2)
+#         x = self.bn1(x)
+#         x = F.leaky_relu(self.conv2(x), 0.2)
+#         x = self.bn2(x)
+#         x = F.leaky_relu(self.conv3(x), 0.2)
+#         x = self.bn3(x)
+#         x = x.view(x.size(0), -1)
+#         x = self.fc1(x)
+        
+#         validity = self.paths[0](x)
+#         classifier = F.log_softmax(self.paths[1](x), dim=1)
+
+#         return validity, classifier
+
+
+
 class Discriminator(nn.Module):
-    def __init__(self, opt):
+    def __init__(self, 
+                 opt,
+                 architecture='cnn',
+                 nf=128, 
+                 kernel_size=5, 
+                 norm = 'no_norm',
+                 nc = 3,
+                 print_shapes=True,
+                 total_units_after_conv=100
+                 ):
         super(Discriminator, self).__init__()
 
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.conv2 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)
-        self.bn2 = nn.BatchNorm2d(128)
-        self.conv3 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)
-        self.bn3 = nn.BatchNorm2d(256)
-        self.fc1 = nn.Linear(4096, 100)
+        self.img_size = 32
+        self.architecture = architecture
+        self.nf = nf
+        self.kernel_size = kernel_size
+        self.norm = norm
+        self.nc = nc
+        self.leaky_relu = nn.LeakyReLU(0.2, inplace=True)
+        
+        encoder_layers = []
+
+        encoder_layers += conv_block(opt.channels, nf, fmap_shape=[16, 16], norm=self.norm, act=self.leaky_relu, kernel_size=self.kernel_size)
+        encoder_layers += conv_block(nf, nf * 2, fmap_shape=[8, 8], norm=self.norm, act=self.leaky_relu, kernel_size=self.kernel_size) 
+        encoder_layers += conv_block(nf * 2, nf * 4, fmap_shape=[4,4], norm=self.norm, act=self.leaky_relu, kernel_size=self.kernel_size) 
+
+        self.encoder_layers = nn.Sequential(*encoder_layers)
         
         modules = nn.ModuleList()
         
+
+        total_units_after_conv = self.get_total_units_after_conv()
+        
         modules.append(nn.Sequential(
-            nn.Linear(100, 1),
-            nn.Sigmoid(),
+            nn.Linear(total_units_after_conv, 1),
+            nn.Sigmoid()
                 ))
         modules.append(nn.Sequential(
-            nn.Linear(100, opt.n_paths_G),
+            nn.Linear(total_units_after_conv, opt.n_paths_G),
                 ))
         self.paths = modules
     
+    def get_total_units_after_conv(self):
+        input_tensor = torch.zeros(100, self.nc, self.img_size, self.img_size)
+        output=input_tensor
+
+        for i, ly in enumerate(self.encoder_layers):
+            output = self.encoder_layers[i](output)
+
+        total_units = output.view(input_tensor.shape[0], -1).shape[-1]
+
+        return total_units
+        
     def forward(self, x):
         
-        x = F.leaky_relu(self.conv1(x), 0.2)
-        x = self.bn1(x)
-        x = F.leaky_relu(self.conv2(x), 0.2)
-        x = self.bn2(x)
-        x = F.leaky_relu(self.conv3(x), 0.2)
-        x = self.bn3(x)
-        x = x.view(x.size(0), -1)
-        x = self.fc1(x)
+        # x = F.leaky_relu(self.conv1(x), 0.2)
+        # x = self.bn1(x)
+        # x = F.leaky_relu(self.conv2(x), 0.2)
+        # x = self.bn2(x)
+        # x = F.leaky_relu(self.conv3(x), 0.2)
+        # x = self.bn3(x)
+        # x = x.view(x.size(0), -1)
+        # x = self.fc1(x)
         
+        x = self.encoder_layers(x)
         validity = self.paths[0](x)
         classifier = F.log_softmax(self.paths[1](x), dim=1)
 
         return validity, classifier
-
         

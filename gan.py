@@ -56,34 +56,38 @@ class Gan:
         print(f'ACC:{acc_result}', flush=True)
 
         # create a directory called plot to store all the confusion matrices and generated images
-        if not (os.path.exists(os.path.join(os.getcwd(),'plot'))):
-            os.makedirs(os.path.join(os.getcwd(),'plot'))
+        plot_path = os.path.join(os.getcwd(),self.opt.logs_path,'plot')
+        if not (os.path.exists(plot_path)):
+            os.makedirs(plot_path)
 
-        utils.show(make_grid(plot_imgs[:self.opt.n_paths_G*10].cpu(), nrow=10, normalize=True), self.opt)
-
-        if not (os.path.exists(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}'))):
-            os.makedirs(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}'))
-
-        plt.savefig(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'generated_imgs.png'))
+        img_grid = make_grid(plot_imgs[:self.opt.n_paths_G*10].cpu(), nrow=10, normalize=True)
+        utils.show(img_grid, self.opt)
+        # save_image(img_grid, plot_path + '.jpg')
+        
+        if not (os.path.exists(os.path.join(plot_path,f'epoch{(epoch)}'))):
+            os.makedirs(os.path.join(plot_path,f'epoch{(epoch)}'))
+        
+        plt.savefig(os.path.join(plot_path,f'epoch{(epoch)}', 'generated_imgs.png'), )
+        cm = confusion_matrix(all_targets, all_predictions)/(100*len(dataloader))
 
         # Compute and print confusion matrix at the end of each epoch
         cm = confusion_matrix(all_targets, all_predictions)/(self.opt.batch_size_g*len(dataloader))
         cm_rounded = np.around(cm, decimals=2)
-        np.save(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'confusion_matrix.npy'), cm_rounded)
+        np.save(os.path.join(os.getcwd(), self.opt.logs_path, 'plot',f'epoch{(epoch)}', 'confusion_matrix.npy'), cm_rounded)
         fig, ax = plt.subplots(figsize=(self.opt.n_paths_G//2, self.opt.n_paths_G//2))
         # sns.heatmap(cm, annot=True, fmt='d', ax=ax, cmap='Blues')
         sns.heatmap(cm_rounded, annot=True, fmt=".2f", linewidths=.5, square = True, cmap = 'viridis')
         ax.set_xlabel('Predicted Labels')
         ax.set_ylabel('True Labels')
         ax.set_title('Confusion Matrix')
-        plt.savefig(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'confusion_matrix.png'))
+        plt.savefig(os.path.join(plot_path,f'epoch{(epoch)}', 'confusion_matrix.png'))
 
 
         # Agglomerative clustering from 50 to 10 clusters
         min_num_clusters = 9
         nmi_list =[]
         acc_list =[]
-        for num_clusters in range(50,min_num_clusters,-1):
+        for num_clusters in range(self.opt.n_paths_G, min_num_clusters,-1):
             model = AgglomerativeClustering(linkage='single', n_clusters=num_clusters, metric='euclidean', compute_distances=True)
             labels = model.fit_predict(cm_rounded)
             new_labels = np.zeros(cluster_preds.shape)
@@ -95,13 +99,10 @@ class Gan:
             nmi_list.append((nmi(true_labels, new_labels)))
             acc_list.append(utils.clustering_acc(true_labels, new_labels.astype(np.int64)))
     
-        np.save(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'nmi_scores.npy'), np.array(nmi_list))
-        np.save(os.path.join(os.getcwd(),'plot',f'epoch{(epoch)}', 'acc_scores.npy'), np.array(acc_list))
+        np.save(os.path.join(os.getcwd(), self.opt.logs_path, 'plot',f'epoch{(epoch)}', 'nmi_scores.npy'), np.array(nmi_list))
+        np.save(os.path.join(os.getcwd(), self.opt.logs_path, 'plot',f'epoch{(epoch)}', 'acc_scores.npy'), np.array(acc_list))
 
-        
-        
-
-
+    
     def train(self, dataloader):
         Tensor = torch.cuda.FloatTensor if self.cuda else torch.FloatTensor
         for epoch in range(self.opt.n_epochs):
@@ -124,8 +125,9 @@ class Gan:
             
             for i, (imgs, _) in enumerate(dataloader):
                 
-                valid = Variable(Tensor(imgs.size(0), 1).fill_(1.0), requires_grad=False)
-                fake = Variable(Tensor(imgs.size(0), 1).fill_(0.0), requires_grad=False)
+                valid_d = Variable(Tensor(imgs.size(0), 1).fill_(1.0), requires_grad=False)
+                valid_g = Variable(Tensor(self.opt.batch_size_g, 1).fill_(1.0), requires_grad=False)
+                fake_d = Variable(Tensor(self.opt.batch_size_g, 1).fill_(0.0), requires_grad=False)
 
                 real_imgs = Variable(imgs.type(Tensor))
 
@@ -135,26 +137,23 @@ class Gan:
 
                 self.optimizer_G.zero_grad()
 
-                z = Variable(Tensor(np.random.normal(0, 1, (imgs.size(0), self.opt.latent_dim))))
+                z = Variable(Tensor(np.random.normal(0, 1, (self.opt.batch_size_g, self.opt.latent_dim))))
                 g_loss = 0 
                 c_loss_1 = 0 
                 
                 for k in range(self.opt.n_paths_G):
 
                     gen_imgs = self.generator.paths[k](z)
-                    if("cnn" in self.generator.architecture):
-                        noise = torch.zeros_like(gen_imgs).cuda()
-                        noise = noise + (0.1**0.5)*torch.randn(noise.shape).cuda()
-                        gen_imgs = gen_imgs + noise
+                    # if("cnn" in self.generator.architecture):
+                        # noise = torch.zeros_like(gen_imgs).cuda()
+                        # noise = noise + (0.1**0.5)*torch.randn(noise.shape).cuda()
+                        # gen_imgs = gen_imgs + noise
                     
-                    
-
                     validity, classifier = self.discriminator(gen_imgs)
                     
-                    
-                    g_loss += self.adversarial_loss(validity, valid)
+                    g_loss += self.adversarial_loss(validity, valid_g)
 
-                    target = Variable(Tensor(imgs.size(0)).fill_(k), requires_grad=False)
+                    target = Variable(Tensor(self.opt.batch_size_g).fill_(k), requires_grad=False)
                     target = target.type(torch.cuda.LongTensor)
                     
                     c_loss_1 += F.nll_loss(classifier, target) * self.opt.classifier_para_g
@@ -189,8 +188,7 @@ class Gan:
                 #loss of the discriminator with real images
                 validity, classifier = self.discriminator(real_imgs)
                 
-                
-                real_loss = self.adversarial_loss(validity, valid)
+                real_loss = self.adversarial_loss(validity, valid_d)
                 
                 temp = [] #variable to store images for plot
                 
@@ -198,13 +196,13 @@ class Gan:
                 for k in range(self.opt.n_paths_G):
 
                     # generates a batch of images with generator k
-                    gen_imgs = self.generator.paths[k](z).view(imgs.shape[0], *(self.opt.img_shape))
+                    gen_imgs = self.generator.paths[k](z).view(self.opt.batch_size_g, *(self.opt.img_shape))
 
                     
-                    if("cnn" in self.generator.architecture):
-                        noise = torch.zeros_like(gen_imgs).cuda()
-                        noise = noise + (0.1**0.5)*torch.randn(noise.shape).cuda()
-                        gen_imgs = gen_imgs + noise
+                    # if("cnn" in self.generator.architecture):
+                        # noise = torch.zeros_like(gen_imgs).cuda()
+                        # noise = noise + (0.1**0.5)*torch.randn(noise.shape).cuda()
+                        # gen_imgs = gen_imgs + noise
 
                     temp.append(gen_imgs[0:10, :])
 
@@ -212,7 +210,7 @@ class Gan:
                     validity, classifier = self.discriminator(gen_imgs.detach())
                     
                     #loss of the discriminator with fake images
-                    fake_loss = self.adversarial_loss(validity, fake)
+                    fake_loss = self.adversarial_loss(validity, fake_d)
                     
                     #sums up the fake and true losses
                     d_loss += (real_loss + fake_loss) / 2
@@ -221,7 +219,7 @@ class Gan:
                     #...in exactly the same way as before, but only after the...
                     #...generator has already had its weights updated in PHASE 1.
                     #reminder: opt.classifier_para is just a multiplicative constant of the loss
-                    target = Variable(Tensor(imgs.size(0)).fill_(k), requires_grad=False)
+                    target = Variable(Tensor(self.opt.batch_size_g).fill_(k), requires_grad=False)
                     target = target.type(torch.cuda.LongTensor)
                     c_loss_2 += F.nll_loss(classifier, target) * self.opt.classifier_para
                 
