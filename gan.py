@@ -80,6 +80,10 @@ class Gan:
 
 
         # Agglomerative clustering from 50 to 10 clusters
+
+
+        ## setting up metric for clustering
+
         min_num_clusters = 9
         nmi_list =[]
         acc_list =[]
