@@ -31,6 +31,11 @@ class Reshape(nn.Module):
 
 def convT_block(nf_in, nf_out, stride = 2, padding = 1,norm='no_norm', act=None, kernel_size=4):
     block = [nn.ConvTranspose2d(nf_in, nf_out, kernel_size=kernel_size, stride=stride, padding=padding, bias=True )]
+    
+    # if norm == 'batch_norm':
+    #     block.append(nn.BatchNorm2d([nf_out]+fmap_shape))
+    # elif norm != 'no_norm':
+    #     raise ValueError(f"Normalization '{norm}' not implemented for discriminator!")
     if act is not None:
         block.append(act)
     return block
@@ -39,14 +44,18 @@ def conv_block(nf_in, nf_out, stride = 2, padding = 2, fmap_shape=[10,10], norm=
     block = [nn.Conv2d(nf_in, nf_out, kernel_size=kernel_size, stride=stride, padding=padding, bias=True )]
     if norm == 'layer_norm':
         block.append(nn.LayerNorm([nf_out]+fmap_shape))
+    elif norm == 'batch_norm':
+        block.append(nn.BatchNorm2d(nf_out))
     elif norm == 'spectral_norm':
         block[-1] = torch.nn.utils.spectral_norm(block[-1])
+    elif norm != 'no_norm':
+        raise ValueError(f"Normalization '{norm}' not implemented for discriminator!")
+        
     if act is not None:
         block.append(act)
     #block.append(nn.LeakyReLU(0.2, inplace=True))
     #block.append(GaussianNoise(normal_std_scale=0.7))
     return block
-
 
 def linear_block(nf_in, nf_out, norm='no_norm',  act=None):
     block = [nn.Linear(nf_in, nf_out)]
@@ -58,28 +67,29 @@ def linear_block(nf_in, nf_out, norm='no_norm',  act=None):
         block.append(act)
     return block
 
-
 class Generator(nn.Module):
     def __init__(self, 
                 opt,
-                architecture = 'cnn', 
+                # architecture = 'cnn', 
                 nf=128, 
                 kernel_size=4, 
                 latent_dim = 100, 
                 nc = 3,
-                print_shapes=False,
-                norm = 'no_norm'
+                print_shapes=False
+                # norm = 'no_norm'
                 ):
         
         super(Generator, self).__init__()
         
         self.img_size = 28
-        self.architecture = architecture
+        # self.architecture = opt.architecture_g
         self.nf = nf
         self.kernel_size = kernel_size
         self.latent_dim = latent_dim
         self.nc = nc
-        self.norm = norm
+        # self.norm = opt.norm_g
+        self.norm = 'no_norm'
+        self.no_conv_g = opt.no_conv_g
         
         def block(in_feat, out_feat, normalize=True):
             layers = [nn.Linear(in_feat, out_feat)]
@@ -100,15 +110,16 @@ class Generator(nn.Module):
             
             gen_layers = []
 
-            if architecture == 'cnn' or architecture == 'cnn_short':
+            # if self.architecture == 'cnn' or self.architecture == 'cnn_short':
+            if self.no_conv_g == 2:
                 # gen_layers += shared_layers
-                gen_layers += linear_block(self.latent_dim, nf*2*first_map_shape*first_map_shape, norm='no_norm', act=nn.ReLU(True))
-                gen_layers += Reshape(-1, nf*2, first_map_shape, first_map_shape),
-                gen_layers += convT_block(nf*2, nf, stride=2, padding=1, norm=self.norm, act=nn.ReLU(True)) 
-                gen_layers += convT_block(nf, opt.channels, stride=2, padding=1, norm='no_norm', act=nn.Tanh())  
+                gen_layers += linear_block(self.latent_dim, self.nf*2*first_map_shape*first_map_shape, norm='no_norm', act=nn.ReLU(True))
+                gen_layers += Reshape(-1, self.nf*2, first_map_shape, first_map_shape),
+                gen_layers += convT_block(self.nf*2, self.nf, stride=2, padding=1, norm=self.norm, act=nn.ReLU(True)) 
+                gen_layers += convT_block(self.nf, opt.channels, stride=2, padding=1, norm='no_norm', act=nn.Tanh())  
             else:
-                raise ValueError('Architecture {} not implemented!'.format(architecture))
-
+                raise ValueError(f'Generator with {self.no_conv_g} not implemented!')
+    
             module = nn.Sequential(*gen_layers)
             modules.append(module)
             
@@ -167,10 +178,10 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self, 
                  opt,
-                 architecture='cnn',
+                #  architecture='cnn',
                  nf=128, 
                  kernel_size=5, 
-                 norm = 'no_norm',
+                #  norm = 'layer_norm',
                  nc = 3,
                  print_shapes=True,
                  total_units_after_conv=100
@@ -178,19 +189,22 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
 
         self.img_size = 28
-        self.architecture = architecture
+        # self.architecture = opt.architecture_d
         self.nf = nf
         self.kernel_size = kernel_size
-        self.norm = norm
+        self.norm = opt.norm_d
         self.nc = opt.channels
         self.leaky_relu = nn.LeakyReLU(0.2, inplace=True)
+        self.no_conv_d = opt.no_conv_d
         
         encoder_layers = []
-
-        encoder_layers += conv_block(opt.channels, nf, fmap_shape=[14, 14], norm=self.norm, act=self.leaky_relu, kernel_size=self.kernel_size)
-        encoder_layers += conv_block(nf, nf * 2, fmap_shape=[7, 7], norm=self.norm, act=self.leaky_relu, kernel_size=self.kernel_size) 
-        encoder_layers += conv_block(nf * 2, nf * 4, fmap_shape=[4,4], norm=self.norm, act=self.leaky_relu, kernel_size=self.kernel_size) 
-
+        if self.no_conv_d==3:
+            encoder_layers += conv_block(opt.channels, nf, fmap_shape=[14, 14], norm=self.norm, act=self.leaky_relu, kernel_size=self.kernel_size)
+            encoder_layers += conv_block(nf, nf * 2, fmap_shape=[7, 7], norm=self.norm, act=self.leaky_relu, kernel_size=self.kernel_size) 
+            encoder_layers += conv_block(nf * 2, nf * 4, fmap_shape=[4,4], norm=self.norm, act=self.leaky_relu, kernel_size=self.kernel_size) 
+        else: 
+            raise ValueError(f'Disc with {self.no_conv_d} not implemented!')
+        
         self.encoder_layers = nn.Sequential(*encoder_layers)
         
         modules = nn.ModuleList()
@@ -205,7 +219,7 @@ class Discriminator(nn.Module):
             nn.Linear(total_units_after_conv, opt.n_paths_G),
                 ))
         self.paths = modules
-    
+
     def get_total_units_after_conv(self):
         input_tensor = torch.zeros(10, self.nc, self.img_size, self.img_size)
         output=input_tensor

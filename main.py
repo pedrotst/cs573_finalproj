@@ -9,7 +9,6 @@ from torchvision import datasets
 from gan import *
 import torchvision.transforms as transforms
 import torch.nn as nn
-
     
     
 def main():
@@ -36,7 +35,6 @@ def main():
             import models
         
 
-
     if opt.dataset == "mnist":
         os.makedirs("data/mnist", exist_ok=True)
         dataloader = torch.utils.data.DataLoader(
@@ -57,7 +55,6 @@ def main():
             import models
         
         
-        
     elif opt.dataset == "cifar10":
         os.makedirs("data/CIFAR10", exist_ok=True)
         dataloader = torch.utils.data.DataLoader(
@@ -76,7 +73,10 @@ def main():
 
     generator = models.Generator(opt) #ok 
     discriminator = models.Discriminator(opt) # ok
-
+    
+    print("Generator: ", generator)
+    print("Discriminator/classifier: ", discriminator)
+    
     #optimizer G
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr_g, betas=(opt.b1, opt.b2))
     
@@ -90,6 +90,7 @@ def main():
 
     gan.train(dataloader)
 
-
 if __name__ == "__main__":
     main()
+
+

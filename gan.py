@@ -31,6 +31,7 @@ class Gan:
         self.optimizer_C = optimizer_C
         self.cuda = torch.cuda.is_available()
         self.opt = opt
+        self.noise_intensity = 0
 
         self.adversarial_loss = torch.nn.BCELoss()
 
@@ -103,7 +104,7 @@ class Gan:
         np.save(os.path.join(os.getcwd(), self.opt.logs_path, 'plot',f'epoch{(epoch)}', 'nmi_scores.npy'), np.array(nmi_list))
         np.save(os.path.join(os.getcwd(), self.opt.logs_path, 'plot',f'epoch{(epoch)}', 'acc_scores.npy'), np.array(acc_list))
 
-    
+
     def train(self, dataloader):
         Tensor = torch.cuda.FloatTensor if self.cuda else torch.FloatTensor
         for epoch in range(self.opt.n_epochs):
@@ -121,6 +122,8 @@ class Gan:
             
             correct_predictions = 0
             total_predictions = 0
+            
+            self.noise_intensity = max(self.opt.init_noise - (epoch*self.opt.noise_decay), 0)
 
             num_batches = len(dataloader)
             
@@ -131,7 +134,8 @@ class Gan:
                 fake_d = Variable(Tensor(self.opt.batch_size_g, 1).fill_(0.0), requires_grad=False)
 
                 real_imgs = Variable(imgs.type(Tensor))
-
+                real_imgs = utils.add_noise(real_imgs, self.noise_intensity)
+                
                 # -----------------------------------------------------
                 #  Train Generator 
                 # -----------------------------------------------------
@@ -145,6 +149,7 @@ class Gan:
                 for k in range(self.opt.n_paths_G):
 
                     gen_imgs = self.generator.paths[k](z)
+                    gen_imgs = utils.add_noise(gen_imgs, self.noise_intensity)
                     # if("cnn" in self.generator.architecture):
                         # noise = torch.zeros_like(gen_imgs).cuda()
                         # noise = noise + (0.1**0.5)*torch.randn(noise.shape).cuda()
@@ -199,14 +204,15 @@ class Gan:
 
                     # generates a batch of images with generator k
                     gen_imgs = self.generator.paths[k](z).view(self.opt.batch_size_g, *(self.opt.img_shape))
-
+                    gen_imgs_no_noise = torch.clone(gen_imgs).detach()
+                    gen_imgs = utils.add_noise(gen_imgs, self.noise_intensity)
                     
                     # if("cnn" in self.generator.architecture):
                         # noise = torch.zeros_like(gen_imgs).cuda()
                         # noise = noise + (0.1**0.5)*torch.randn(noise.shape).cuda()
                         # gen_imgs = gen_imgs + noise
 
-                    temp.append(gen_imgs[0:10, :])
+                    temp.append(gen_imgs_no_noise[0:10, :])
 
                     #again we measure the outputs of the discriminator and the classifier 
                     validity, classifier = self.discriminator(gen_imgs.detach())
@@ -228,6 +234,7 @@ class Gan:
                 #images for plot
                 plot_imgs = torch.cat(temp, dim=0)
 
+
                 #again, we accumulate the losses to visualize the total for the epoch
                 d_loss_epoch += d_loss
                 c_loss_2_epoch += c_loss_2
@@ -245,7 +252,8 @@ class Gan:
             
             classification_accuracy = 100.0 * correct_predictions / total_predictions
             
-            if (epoch < 20 and epoch % 5 == 0) or (epoch > 20 and epoch % 20 == 0):
+            # if (epoch < 20 and epoch % 5 == 0) or (epoch > 20 and epoch % 20 == 0):
+            if (epoch % self.opt.sample_interval == 0):
                 self.logging(epoch, dataloader, d_loss_epoch.item(), g_loss_epoch.item(), c_loss_1_epoch.item(), c_loss_2_epoch.item(), classification_accuracy, interval, plot_imgs, all_targets, all_predictions)
 
                 

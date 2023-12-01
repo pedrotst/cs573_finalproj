@@ -2,37 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import argparse
 
-# class arg_parser_subst():
-    
-#     def __init__(self, argv):
-#         self.n_epochs = 500 
-#         self.batch_size = 100
-#         self.batch_size_g = 100
-#         self.lr = 0.0002 
-#         self.b1 = 0.5 
-#         self.b2 = 0.999 
-#         self.n_cpu = 12 
-#         self.latent_dim = 100 
-#         self.sample_interval = 400 
-#         self.n_paths_G = 50 # number of generators
-#         self.classifier_para = 0.001
-#         self.classifier_para_g = 0.001
-
-#         if('fmnist' in argv[1].lower()):
-#             self.img_size = 28
-#             self.channels = 1
-#             self.architecture = 'mlp'
-#         elif('mnist' in argv[1].lower()):
-#             self.img_size = 28
-#             self.channels = 1
-#             self.architecture = 'mlp'
-#         elif('cifar10' in argv[1].lower()):
-#             self.img_size = 32
-#             self.channels = 3
-#             self.architecture = argv[2]
-
-#         self.img_shape = (self.channels, self.img_size, self.img_size)
-#         print(self.img_shape, flush=True)
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -40,21 +9,38 @@ def parse_args():
     parser.add_argument('--n_epochs', type=int, default=500, help='number of epochs')
     parser.add_argument('--batch_size', type=int, default=100, help='batch size')
     parser.add_argument('--batch_size_g', type=int, default=100, help='generator batch size')
-    parser.add_argument('--lr_d', type=float, default=0.0002, help='learning rate for disc')
-    parser.add_argument('--lr_g', type=float, default=0.0002, help='learning rate for gen')
-    parser.add_argument('--lr_c', type=float, default=0.00002, help='learning rate for clasf')
     parser.add_argument('--b1', type=float, default=0.5, help='adam: decay of first order momentum')
     parser.add_argument('--b2', type=float, default=0.999, help='adam: decay of second order momentum')
     parser.add_argument('--n_cpu', type=int, default=12, help='number of cpu threads to use during batch generation')
     parser.add_argument('--latent_dim', type=int, default=100, help='dimensionality of the latent space')
-    parser.add_argument('--sample_interval', type=int, default=400, help='interval between image samples')
-    parser.add_argument('--n_paths_G', type=int, default=50, help='number of generators')
-    parser.add_argument('--classifier_para', type=float, default=1.0, help='classifier parameter')
-    parser.add_argument('--classifier_para_g', type=float, default=1.0, help='generator classifier parameter')
+    parser.add_argument('--sample_interval', type=int, default=1, help='interval between image samples')
+    parser.add_argument('--classifier_para', type=float, default=1.0, help='classifier loss weight')
+    parser.add_argument('--classifier_para_g', type=float, default=1.0, help="generator's classification loss weight")
     parser.add_argument('--dataset', choices=['fmnist', 'mnist', 'cifar10'], help='dataset name')
     parser.add_argument('--architecture', default='mlp', help='architecture for the model')
     parser.add_argument('--logs_path', default='logs', help='where to save logs')
+    parser.add_argument('--init_noise', type=float, default=1.0, help='Initial stdd of gaussian noise applied to input of discriminator')
+    parser.add_argument('--noise_decay', type=float, default=0.01, help='How much is subtracted of of gaussian stdd noise at each epoch')
     
+    #generator parameters
+    parser.add_argument('--n_paths_G', type=int, default=50, help='number of generators')
+    parser.add_argument('--lr_g', type=float, default=0.0002, help='learning rate for gen')
+    
+    parser.add_argument('--nf_g', type=int, default=128,help='Number of feature maps for generator.')
+    # parser.add_argument('--norm_g', type=str, default='layer_norm', choices=['layer_norm', 'batch_norm', 'no_norm'], help='Type of normalization layer used for generator')
+    parser.add_argument('--no_conv_g', type=int, default=2, choices=[2], help='Number of conv layers for gen')
+    
+    #discriminator/classifier parameters
+    parser.add_argument('--lr_d', type=float, default=0.0002, help='learning rate for disc')
+    parser.add_argument('--lr_c', type=float, default=0.00002, help='learning rate for clasf')
+    parser.add_argument('--nf_d', type=int, default=128, help='Number of feature maps for discriminator.')
+    parser.add_argument('--norm_d', type=str, default='layer_norm', choices=['layer_norm', 'batch_norm', 'no_norm'], help='Type of normalization layer used for discriminator')
+    parser.add_argument('--no_conv_d', type=int, default=3, choices=[3], help='Number of conv layers for discriminator')
+    
+    
+    parser.set_defaults(shared_features_across_ref=False)
+
+
     args = parser.parse_args()
 
     if args.dataset == 'cifar10':
@@ -106,19 +92,21 @@ def clustering_acc(y_true, y_pred):
     return sum([w[row, col] for row, col in zip(row_ind, col_ind)]) / y_pred.size
 
 
-def get_cluster(dataloader, discriminator, soft_preds=False):
+def get_cluster(dataloader, discriminator, soft_preds=False, noise_intensity=0):
     #cuda = True if torch.cuda.is_available() else False
     #Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     all_data = []
     all_idxs = []
     all_preds = []
-    for i, (x,y) in enumerate(dataloader):
-        x = x.to(device)
-        y = y.to(device)
-        d_out, c_out = discriminator(x)
-        all_preds.append(c_out)
-        all_idxs.append(y)
+    with torch.no_grad():
+        for i, (x,y) in enumerate(dataloader):
+            x = x.to(device)
+            x = add_noise(x, noise_intensity)
+            y = y.to(device)
+            d_out, c_out = discriminator(x)
+            all_preds.append(c_out)
+            all_idxs.append(y)
     all_idxs = torch.cat(all_idxs, axis=0)
     all_preds = torch.cat(all_preds, axis=0)
     if soft_preds:
@@ -150,3 +138,10 @@ def plot_dendrogram(model, **kwargs):
 
     # Plot the corresponding dendrogram
     dendrogram(linkage_matrix, **kwargs)
+    
+
+def add_noise(tensor, normal_std_scale):
+    if (normal_std_scale > 0):
+        return tensor + (tensor*torch.randn_like(tensor)*normal_std_scale)
+    else:
+        return tensor
