@@ -47,7 +47,7 @@ def parse_args():
     parser.add_argument('--b2', type=float, default=0.999, help='adam: decay of second order momentum')
     parser.add_argument('--n_cpu', type=int, default=12, help='number of cpu threads to use during batch generation')
     parser.add_argument('--latent_dim', type=int, default=100, help='dimensionality of the latent space')
-    parser.add_argument('--sample_interval', type=int, default=400, help='interval between image samples')
+    parser.add_argument('--sample_interval', type=int, default=1, help='interval between image samples')
     parser.add_argument('--n_paths_G', type=int, default=50, help='number of generators')
     parser.add_argument('--classifier_para', type=float, default=1.0, help='classifier parameter')
     parser.add_argument('--classifier_para_g', type=float, default=1.0, help='generator classifier parameter')

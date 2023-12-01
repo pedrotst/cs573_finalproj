@@ -47,7 +47,6 @@ def conv_block(nf_in, nf_out, stride = 2, padding = 2, fmap_shape=[10,10], norm=
     #block.append(GaussianNoise(normal_std_scale=0.7))
     return block
 
-
 def linear_block(nf_in, nf_out, norm='no_norm',  act=None):
     block = [nn.Linear(nf_in, nf_out)]
     if norm == 'layer_norm':
@@ -57,7 +56,6 @@ def linear_block(nf_in, nf_out, norm='no_norm',  act=None):
     if act is not None:
         block.append(act)
     return block
-
 
 class Generator(nn.Module):
     def __init__(self, 
@@ -72,6 +70,7 @@ class Generator(nn.Module):
                 ):
         
         super(Generator, self).__init__()
+        
         
         self.img_size = 28
         self.architecture = architecture
@@ -100,14 +99,14 @@ class Generator(nn.Module):
             
             gen_layers = []
 
-            if architecture == 'cnn' or architecture == 'cnn_short':
+            if self.architecture == 'cnn' or self.architecture == 'cnn_short':
                 # gen_layers += shared_layers
-                gen_layers += linear_block(self.latent_dim, nf*2*first_map_shape*first_map_shape, norm='no_norm', act=nn.ReLU(True))
-                gen_layers += Reshape(-1, nf*2, first_map_shape, first_map_shape),
-                gen_layers += convT_block(nf*2, nf, stride=2, padding=1, norm=self.norm, act=nn.ReLU(True)) 
-                gen_layers += convT_block(nf, opt.channels, stride=2, padding=1, norm='no_norm', act=nn.Tanh())  
+                gen_layers += linear_block(self.latent_dim, self.nf*2*first_map_shape*first_map_shape, norm='no_norm', act=nn.ReLU(True))
+                gen_layers += Reshape(-1, self.nf*2, first_map_shape, first_map_shape),
+                gen_layers += convT_block(self.nf*2, self.nf, stride=2, padding=1, norm=self.norm, act=nn.ReLU(True)) 
+                gen_layers += convT_block(self.nf, opt.channels, stride=2, padding=1, norm='no_norm', act=nn.Tanh())  
             else:
-                raise ValueError('Architecture {} not implemented!'.format(architecture))
+                raise ValueError('Architecture {} not implemented!'.format(self.architecture))
 
             module = nn.Sequential(*gen_layers)
             modules.append(module)
@@ -170,7 +169,7 @@ class Discriminator(nn.Module):
                  architecture='cnn',
                  nf=128, 
                  kernel_size=5, 
-                 norm = 'no_norm',
+                 norm = 'layer_norm',
                  nc = 3,
                  print_shapes=True,
                  total_units_after_conv=100
@@ -205,7 +204,7 @@ class Discriminator(nn.Module):
             nn.Linear(total_units_after_conv, opt.n_paths_G),
                 ))
         self.paths = modules
-    
+
     def get_total_units_after_conv(self):
         input_tensor = torch.zeros(10, self.nc, self.img_size, self.img_size)
         output=input_tensor

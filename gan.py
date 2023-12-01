@@ -245,7 +245,8 @@ class Gan:
             
             classification_accuracy = 100.0 * correct_predictions / total_predictions
             
-            if (epoch < 20 and epoch % 5 == 0) or (epoch > 20 and epoch % 20 == 0):
+            # if (epoch < 20 and epoch % 5 == 0) or (epoch > 20 and epoch % 20 == 0):
+            if (epoch % self.opt.sample_interval == 0):
                 self.logging(epoch, dataloader, d_loss_epoch.item(), g_loss_epoch.item(), c_loss_1_epoch.item(), c_loss_2_epoch.item(), classification_accuracy, interval, plot_imgs, all_targets, all_predictions)
 
                 
