@@ -73,7 +73,10 @@ def main():
 
     generator = models.Generator(opt) #ok 
     discriminator = models.Discriminator(opt) # ok
-
+    
+    print("Generator: ", generator)
+    print("Discriminator/classifier: ", discriminator)
+    
     #optimizer G
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr_g, betas=(opt.b1, opt.b2))
     
@@ -89,3 +92,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
