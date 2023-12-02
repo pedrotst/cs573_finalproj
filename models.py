@@ -47,6 +47,15 @@ class Discriminator(nn.Module):
         self.fc2 = nn.Linear(512, 256)
         self.lr2 = nn.LeakyReLU(0.2, inplace=True)
         
+        encoder_layers = []
+
+        encoder_layers += [self.fc1]
+        encoder_layers += [self.lr1]
+        encoder_layers += [self.fc2]
+        encoder_layers += [self.lr2]
+        
+        self.encoder_layers = nn.Sequential(*encoder_layers)
+        
         modules = nn.ModuleList()
         
         modules.append(nn.Sequential(
@@ -60,7 +69,8 @@ class Discriminator(nn.Module):
     
     def forward(self, img):
         img_flat = img.view(img.size(0), -1)
-        img_flat = self.lr2(self.fc2(self.lr1(self.fc1(img_flat))))
+        # img_flat = self.lr2(self.fc2(self.lr1(self.fc1(img_flat))))
+        img_flat = self.encoder_layers(img_flat)
         
         validity = self.paths[0](img_flat)
         classifier = F.log_softmax(self.paths[1](img_flat), dim=1)
