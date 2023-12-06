@@ -100,7 +100,9 @@ class Gan:
             
             nmi_list.append((nmi(true_labels, new_labels)))
             acc_list.append(utils.clustering_acc(true_labels, new_labels.astype(np.int64)))
-    
+
+        print(f"Acc for multiple agglo levels {acc_list}")
+        print(f"Nmi for multiple agglo levels {nmi_list}")
         np.save(os.path.join(os.getcwd(), self.opt.logs_path, 'plot',f'epoch{(epoch)}', 'nmi_scores.npy'), np.array(nmi_list))
         np.save(os.path.join(os.getcwd(), self.opt.logs_path, 'plot',f'epoch{(epoch)}', 'acc_scores.npy'), np.array(acc_list))
 
