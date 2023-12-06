@@ -17,6 +17,7 @@ def parse_args():
     parser.add_argument('--classifier_para', type=float, default=1.0, help='classifier loss weight')
     parser.add_argument('--classifier_para_g', type=float, default=1.0, help="generator's classification loss weight")
     parser.add_argument('--dataset', choices=['fmnist', 'mnist', 'cifar10'], help='dataset name')
+    parser.add_argument('--data_path', default='data', help='dataset path')
     parser.add_argument('--architecture', default='mlp', help='architecture for the model')
     parser.add_argument('--logs_path', default='logs', help='where to save logs')
     parser.add_argument('--init_noise', type=float, default=1.0, help='Initial stdd of gaussian noise applied to input of discriminator')

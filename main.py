@@ -16,10 +16,10 @@ def main():
     opt = utils.parse_args()
 
     if opt.dataset == "fmnist":
-        os.makedirs("data/fmnist", exist_ok=True)
+        os.makedirs(f"{opt.data_path}/fmnist", exist_ok=True)
         dataloader = torch.utils.data.DataLoader(
             datasets.FashionMNIST(
-                "data/fmnist",
+                f"{opt.data_path}/fmnist",
                 train=True,
                 download=True,
                 transform=transforms.Compose(
@@ -36,10 +36,10 @@ def main():
         
 
     if opt.dataset == "mnist":
-        os.makedirs("data/mnist", exist_ok=True)
+        os.makedirs(f"{opt.data_path}/mnist", exist_ok=True)
         dataloader = torch.utils.data.DataLoader(
             datasets.MNIST(
-                "data/mnist",
+                f"{opt.data_path}/mnist",
                 train=True,
                 download=True,
                 transform=transforms.Compose(
@@ -56,7 +56,7 @@ def main():
         
         
     elif opt.dataset == "cifar10":
-        os.makedirs("data/CIFAR10", exist_ok=True)
+        os.makedirs(f"{opt.data_path}/CIFAR10", exist_ok=True)
         dataloader = torch.utils.data.DataLoader(
             datasets.CIFAR10('data/CIFAR10', train=True, download=True,
                    transform=transforms.Compose([
