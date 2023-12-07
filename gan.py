@@ -58,9 +58,13 @@ class Gan:
         print(f'ACC:{acc_result}', flush=True)
 
         # create a directory called plot to store all the confusion matrices and generated images
+        logs_path = os.path.join(os.getcwd(),self.opt.logs_path)
+        # if not (os.path.exists(logs_path)):
+        os.makedirs(logs_path, exist_ok=True)
+        
         plot_path = os.path.join(os.getcwd(),self.opt.logs_path,'plot')
-        if not (os.path.exists(plot_path)):
-            os.makedirs(plot_path)
+        # if not (os.path.exists(plot_path)):
+        os.makedirs(logs_path, exist_ok=True)
 
         img_grid = make_grid(plot_imgs[:self.opt.n_paths_G*10].cpu(), nrow=10, normalize=True)
         utils.show(img_grid, self.opt)
